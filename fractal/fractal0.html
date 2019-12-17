@@ -1,0 +1,391 @@
+<!doctype html>
+<html>
+<head>
+<style>
+h1 { font-family: monospace; }
+
+#grid {
+	// must match javascript below
+	width: 640px;
+	height: 512px;
+	border: 1px solid black;
+	overflow: hidden;
+}
+
+div {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+}
+</style>
+<script type="text/javascript" src="http://www.google.com/jsapi"></script>
+<script>
+google.load("jquery", "1.4.2");
+
+var mousedown
+var mousemove
+var mouseup
+var key
+
+function themousedown() {
+	var e = window.event;
+	if(e && e.preventDefault)
+		e.preventDefault();
+	if(mousedown != null)
+		mousedown();
+	return false;
+}
+
+function themousemove() {
+	if(mousemove != null)
+		mousemove();
+}
+
+function themouseup() {
+	if(mouseup != null)
+		mouseup();
+}
+
+function thekey() {
+	if(key != null)
+		key();
+}
+
+function setup() {
+	console.log("setup...");
+
+	// Div objects.
+	var grid = $("#grid");
+
+	// Size parameters.  Must match CSS sizes above.
+	// Tried pulling them out of CSS but get different 
+	// answers on some browsers.
+	var gridX = 640;	// size of main grid
+	var gridY = 512;
+	
+	// Coordinate 0,0 in the grid is coordinate gx0,gy0 in Cartesian pixel plane.
+	// These get adjusted as we pan.
+	var gx0 = -gridX/2;
+	var gy0 = -gridY/2;
+
+	// Size of tile in pixels.  Tiles are always lined up so that Cartesian 0,0 sits at four corners.
+	var tileX = 128;
+	var tileY = 128;
+	
+	var scale = 4 / 512;
+
+	function newX(x) {
+		for(var y = minY; y < maxY; y += tileY) {
+			newXY(x, y);
+		}
+	}
+	
+	function newY(y) {
+		for(var x = minX; x < maxX; x += tileX) {
+			newXY(x, y);
+		}
+	}
+	
+	function makeURL(x, y) {
+		// Generate image URL for tile at Cartesian x, y.
+		var c0 = (x*scale) + "";
+		if(y >= 0) {
+			c0 += "+";
+		}
+		c0 += (y*scale) + "i";
+		
+		var dc = (tileX*scale) + "+" + (tileY*scale) + "i";
+		
+		var url = "/mandelbrot?p=" + tileX + "+" + tileX + "+" +
+			c0.replace("+", "%2b") + "+" + dc.replace("+", "%2b") + "+" + 64;
+		
+		return url;
+	}
+	
+	function newXY(x, y) {
+		var img = $(new Image());
+		var url = makeURL(x, y);
+		console.log("queue", x, y, url);
+		img.get(0).draggable = false;
+		img.css({width: tileX+"px", height: tileY+"px"});
+		img.load(function(){
+			console.log("loaded", x, y, url);
+			img.css({position: "absolute", left: (x-gx0)+"px", top: (y-gy0)+"px"});
+			grid.append(img);
+		});
+		img.error(function(){
+			console.log("error loading", x, y, url);
+		});
+		img.attr("src", url);
+	}
+
+	// Bounds of what has been computed and loaded as tile images.
+	var minX = gx0 - tileX, minY = gy0 - tileX, maxX = gx0 + gridX + tileX, maxY = gy0 + gridY + tileY;
+	
+	console.log("newgrid");
+
+	// Start with the grid full of images.
+	for(var x = minX; x < maxX; x += tileX)
+	for(var y = minY; y < maxY; y += tileY) {
+		console.log("newgrid", x, y);
+		newXY(x, y);
+	}
+
+	// On drag, create new columns or rows as needed.
+	// For simplicity, never retire any.
+	function drag(dx, dy) {
+		$(".tile").css({
+			left: function(index, value) {
+				var v = parseInt(value) + dx
+				return v
+			},
+			top: function(index, value) {
+				var v = parseInt(value) + dy
+				return v
+			}
+		});
+		gx0 += dx;
+		gy0 += dy;
+		while(gx0 < minX) {
+			minX -= tileX;
+			newX(minX);
+		}
+		while(gy0 < minY) {
+			minY -= tileY;
+			newY(minY);
+		}
+		while(gx0 + gridX > maxX) {
+			newX(maxX);
+			maxX += tileX;
+		}
+		while(gx0 + gridY > maxY) {
+			newY(maxY);
+			maxY += tileY;
+		}
+	}
+
+	function zoom(dir) {
+	}
+
+/*
+	// On zoom, XXX.
+	
+	
+	console.log("SETUP");
+	var nx = 5;
+	var ny = 3;
+	var mouseIsDown = false;
+	var downX = 0;
+	var downY = 0;
+	var grid = $("#grid")
+	var pan = $("#pan");
+	var tx = 640; // grid.innerWidth();
+	var ty = 384; // grid.innerHeight();
+	var centerR = 0
+	var centerI = 0
+	var centerX = 320; // pan.innerWidth()/2
+	var centerY = 192; // pan.innerHeight()/2
+	var bx = (tx/nx)*(nx+1);
+	var by = (ty/ny)*(ny+1);
+	var dx1 = tx/nx;
+	var dy1 = ty/ny;
+	var maxDepth = 1;
+	var imgcache = new Array();
+	var visible = new Array();
+	var loading = false;
+	var nload = 0;
+	var scale = 3/512;
+	
+	function startload(x, y, d) {
+		var url = imageurl(x, y, d, scale)
+		var img = $(new Image());
+		img.get(0).draggable = false;
+		img.css({width: dx1+'px', height: dy1+'px'});
+		img.load(function() {
+			console.log("loaded", x, y, d, url);
+			var px = x*dx1;
+			var py = y*dy1;
+			img.css({position: "absolute", left: px+"px", top: py+"px"});
+			pan.append(img);
+			visible.push(img);
+			imgcache[url] = img;
+			loading = false;
+			refresh();
+		}).error(function() {
+			console.log("error loading", x, y, d, url);
+			refresh();
+		}).attr("src", url);
+	}
+	
+	function approx() {
+		for (var x = 0; x <= nx; x++)
+		for (var y = 0; y <= ny; y++ ){
+			for (var d = maxDepth; d >= 0; d--) {
+				var url = imageurl(x, y, d, scale*2)
+				if (imgcache[url] != null) {
+					var img = imgcache[url]
+					if(img.css("visibility") != "visible") {
+						img.css({width: (2*dx1)+'px', height: 2*dy1+'px'});
+						img.css({position: "absolute", left: (x*dx1)+'px', top: (y*dx1)+'px'});
+						img.css("visibility", "visible");
+						pan.append(img);
+						visible.push(img);
+					}
+				}
+			}
+		}
+	}
+
+	function refresh() {
+		for (var targetd = 0; targetd <= maxDepth; targetd++)
+		for (var x = 0; x <= nx; x++)
+		for (var y = 0; y <= ny; y++) {
+			var d;
+			for (d = targetd; d >= 0; d--) {
+				var url = imageurl(x, y, d, scale)
+				if (imgcache[url] != null) {
+					var img = imgcache[url]
+					img.css({width: dx1+'px', height: dy1+'px'});
+					img.css({position: "absolute", left: (x*dx1)+"px", top: (y*dy1)+"px"});
+					if(img.css("visibility") != "visible") {
+						img.css("visibility", "visible");
+						pan.append(img);
+						visible.push(img);
+					}
+					did = true
+					break
+				}
+			}
+			if(d < targetd && !loading && nload < 1000) {
+				nload++;
+				loading = true;
+				startload(x, y, d+1);
+			}
+		}
+	}
+	
+	function clear() {
+		while(visible.length > 0) {
+			var img = visible.pop();
+			img.css("visibility", "hidden");
+		}
+		pan.empty();
+	}
+
+	mousemove = function() {
+		var e = window.event;
+		if(!mouseIsDown) {
+			return;
+		}
+		var dX = e.screenX - downX;
+		var dY = e.screenY - downY;
+		downX = e.screenX;
+		downY = e.screenY;
+		console.log("Move", downX, downY);
+		var adjust = false;
+		pan.css({left: function(index, value) {
+				var v = parseInt(value) + dX
+				while(v > 0) {
+					v -= dx1
+					centerR -= scale*dx1
+					adjust = true
+				}
+				while(v <= -dx1) {
+					v += dx1
+					centerR += scale*dx1
+					adjust = true
+				}
+				return v
+			},
+			top: function(index, value) {
+				var v = parseInt(value) + dY
+				while(v > 0) {
+					v -= dy1
+					centerI -= scale*dy1
+					adjust = true
+				}
+				while(v <= -dy1) {
+					v += dy1
+					centerI += scale*dy1
+					adjust = true
+				}
+				return v
+			}
+		});
+		console.log("pan", pan.css("left"), pan.css("top"), centerR, centerI);
+		if(adjust) {
+			clear();
+			approx();
+			refresh();
+		}
+	}
+	
+
+			scale /= 2;
+			clear();
+			approx();
+			refresh();
+			clear();
+			refresh();
+		}
+	}
+	pan.css({position: 'relative', left: '0px', top: '0px'});
+	pan.mousedown(mousedown);
+	pan.mouseup(mouseup);
+	refresh();
+*/
+
+	// Mouse motion calls drag.
+	var downX = 0;
+	var downY = 0;
+	var mouseIsDown = false;
+
+	mousedown = function() {
+		var e = window.event;
+		downX = e.screenX;
+		downY = e.screenY;
+		console.log("Down", downX, downY);
+		mouseIsDown = true;
+	}
+	
+	mouseup = function() {
+		mouseIsDown = false;
+	}
+
+	mousemove = function() {
+		var e = window.event;
+		if(!mouseIsDown) {
+			return;
+		}
+		var dX = e.screenX - downX;
+		var dY = e.screenY - downY;
+		downX = e.screenX;
+		downY = e.screenY;
+		drag(dX, dY);
+	}
+
+	// Keystrokes.  Plus and minus call zoom.
+	key = function() {
+		var e = window.event;
+		console.log("key", e.keyCode);
+		if(e.keyCode == 187) {	/* plus */
+			zoom(+1);
+		} else if(e.keyCode == 189) {	/* minus */
+			zoom(-1);
+		}
+	}
+}
+
+google.setOnLoadCallback(setup);
+</script>
+
+<body onmouseup="themouseup();" onmousemove="themousemove();" onkeydown="key();">
+<h1>Fractal Viewer</h1>
+
+<div style="width: 800px; height: 640px;">
+<div id="grid" onmousedown="mousedown();">
+</div>
+</div>
+
+

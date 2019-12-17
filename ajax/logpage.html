@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+<style>
+h1 { font-family: monospace; }
+</style>
+<script type="text/javascript" src="http://www.google.com/jsapi"></script>
+<script>
+google.load("jquery", "1.4.2");
+
+function chanrecv(data) {
+	if(data.Log != null) {
+		$("#log").append(data.Log + "<br>")
+		data.Log = null;
+	}
+	else if(data.Error != null) {
+		$("#errors").append(data.Error + "<br>")
+		data.Error = null;
+	}
+	else {
+		console.log("unexpected:", data);
+		var did = 0;
+		for(v in data) {
+			console.log("bad", v);
+			$("#errors").append("ERROR: UNEXPECTED TYPE " + v + "<br>")
+			did++;
+		}
+		if(!did) {
+			$("#errors").append("ERROR: EMPTY MESSAGE RECEIVED ON CHANNEL.<br>");
+		}
+	}
+}
+
+var ajaxchan = function() {
+	var did = false
+	var n = 0
+	var f
+	var next = function() {
+		$.ajax({type: "GET", url: "/_ajaxchan_?n=" + n, 
+			dataType: 'json', cache: false,
+			success: function(data){
+				if(data != null && data.timeout) {
+					next()
+					return
+				}
+				n++
+				if(data != null) {
+					f(data)
+				}
+				next()
+			},
+			error: function(){window.setTimeout(next, 5000)}
+		})
+	}
+	return function(thefunc) {
+		f = thefunc
+		if(!did) {
+			did = true
+			next()
+		}
+	}
+}()
+
+google.setOnLoadCallback(function(){ajaxchan(chanrecv)});
+</script>
+
+<h1>Logging via AJAX</h1>
+
+<code>Log messages</code>
+<div id="log" align="left" style="width: 100%; font-family: monaco; font-size: 100%; color: #00c;">
+</div>
+
+<br><br>
+<code>Errors</code>
+<div id="errors" style="font-family: monospace; color: #800;"></div>
+
+</html>

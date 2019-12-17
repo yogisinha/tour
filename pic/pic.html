@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+<style>
+h1 { font-family: monospace; }
+</style>
+<script type="text/javascript" src="http://www.google.com/jsapi"></script>
+<script>
+google.load("jquery", "1.4.2");
+google.load("jqueryui", "1.8.2");
+function showpic() {
+	$.ajax({type: "GET", url: "/pic", data: {dx: 512, dy: 512}, dataType: "json", cache: false,
+		success: function(data) {
+//console.log("Success:", data)
+			$("#pic").get(0).innerHTML = "";
+			if(data != null && data.Img) {
+//console.log("img", data.img)
+				$("#pic").css("background-image", "url(" + data.Img + ")");
+			} else if(data != null && data.Error != null) {
+				$("#errors").get(0).innerHTML = data.Error;
+			}
+		},
+		error: function() {
+			$("#errors").get(0).innerHTML = "Failed to load /pic.";
+		}
+	});
+}
+function onload() { showpic() }
+google.setOnLoadCallback(onload);
+</script>
+<h1>Pic Display</h1>
+
+<div id="pic" style="width: 512px; height: 512px; border: 1px solid black;">Loading...</div>
+
+<div id="errors" style="font-family: monospace; color: #800;"></div>
+
+</html>

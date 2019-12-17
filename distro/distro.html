@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+<style>
+h1 { font-family: monospace; }
+
+#grid {
+	width: 640px;
+	height: 480px;
+	border: 1px solid black;
+}
+
+div {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+}
+
+.status {
+	color: #800;
+}
+</style>
+<script type="text/javascript" src="http://www.google.com/jsapi"></script>
+<script>
+google.load("jquery", "1.4.2");
+
+function chanrecv(data) {
+	var grid = $("#grid");
+	if(data.Fragment != null) {
+		var f = data.Fragment;
+		var img = $(new Image());
+		img.get(0).draggable = false;
+		//img.css({width: '80px', height: '80px'});
+		img.load(function(){
+			var o = grid.offset()
+			img.css({position: "absolute", left: (o.left+1+f.X)+"px", top: (o.top+1+f.Y)+"px"});
+			img.css("visibility", "visible");
+			grid.append(img);
+			console.log("position " + f.URL + " at " + f.X + " " + f.Y);
+		});
+		img.attr("src", f.URL);
+	}
+	if(data.Log != null) {
+		$("#log").append(data.Log + '<br>')
+	}
+	if(data.Error != null) {
+		$("#errors").append(data.Error + "<br>")
+	}
+}
+
+var ajaxchan = function() {
+	var did = false
+	var n = 0
+	var f
+	var next = function() {
+		$.ajax({type: "GET", url: "/_ajaxchan_?n=" + n, 
+			dataType: 'json', cache: false,
+			success: function(data){
+				if(data != null && data.timeout) {
+					next()
+					return
+				}
+				n++
+				if(data != null) {
+					f(data)
+				}
+				next()
+			}
+		})
+	}
+	return function(thefunc) {
+		f = thefunc
+		if(!did) {
+			did = true
+			next()
+			$.ajax({type: "GET", url: "/_ajaxchan_?poll=1", dataType: 'json', cache: false,
+				success: function(data){
+					if(data != null && data.N != 0) {
+						n = data.N
+						next()
+					}
+				}
+			})
+		}
+	}
+}()
+
+function go() {
+	ajaxchan(chanrecv);
+	$.ajax({type: "GET", url: "/start"})
+}
+
+google.setOnLoadCallback(go);
+</script>
+
+<body onunload="exit();">
+<h1>Image Distribution Network</h1>
+
+<div style="width: 800px; height: 640px;">
+<div id="grid">
+</div>
+</div>
+
+<code>Log messages</code>
+<div id="log" align="left" style="width: 100%; font-family: monaco; font-size: 100%; color: #00c;">
+</div>
+
+<br><br>
+<code>Errors</code>
+<div id="errors" style="font-family: monospace; color: #800;"></div>
+
+</html>
