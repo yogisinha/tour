@@ -1,7 +1,7 @@
 # golang tour
 Go files and solutions to Russ Cox 2010 course. Good course to learn various aspects of Go.
 
-I have include the course pdf (go-course.pdf) in this repo. In this pdf you can find the link for the support code for these exercises, but this course is from 2010 and some code did not compile with recent Go version. Like http handler function definition took **\*http.Conn** object instead of **http.ResponseWriter** as first argument.
+I have included the course pdf (go-course.pdf) in this repo. In this pdf you can find the link for the support code for these exercises, but this course is from 2010 and some code did not compile with recent Go version. Like http handler function definition took **\*http.Conn** object instead of **http.ResponseWriter** as first argument.
 I changed those code and included in this repo. So its best to work with code included in this repo. 
 These exercises were fun and lot of learning. You should try to implement these first by yourself. 
 Please send your feedback if anything can be improved.
@@ -91,7 +91,7 @@ Go to http://localhost:4000/string and http://localhost:4000/struct in your brow
 
 #### Image Viewer
 -imgver option runs the Image Viewer exercise. It is the same concept as Slices exercise but instead of 
-returning [][]unit8 slices, it returns image.Image type which then displayed on browser. Run the binary with following option:
+returning [][]unit8 slices, it returns **image.Image** type which then displayed on browser. Run the binary with following option:
 ```sh
 tour -imgvwer="X+Y"
 ```
@@ -164,7 +164,7 @@ or distributed fashion.
 
 This exercise mainly starts with -rpc option:
 ```sh
-tour -rpc -image=<some image path> -x=<number> -y=<number> -random 
+tour -rpc -image=<some image path> -x=<width of block> -y=<height of block> -mode=<s or d> -workers=<no of workers> -random 
 ```
 Below is the description of options to run this exercise:
 1. -image : accepts the image path on your system. Note: Include path in double quotes if your image path contains spaces.
