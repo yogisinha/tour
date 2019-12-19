@@ -15,7 +15,7 @@ import (
 // Messages sent on chan are delivered to JavaScript running in the browser.
 var Chan chan<- interface{}
 
-func handler(c http.ResponseWriter, req *http.Request) {	
+func handler(c http.ResponseWriter, req *http.Request) {
 	ch := make(chan []byte, 1)
 	Chan <- pending{c, ch, int64(time.Nanosecond + 10e9), req}
 	c.Header().Set("Content-Type", "application/json")
@@ -30,7 +30,6 @@ type pending struct {
 }
 
 func init() {
-	fmt.Println("In init of ajax package...")
 	http.HandleFunc("/_ajaxchan_", handler)
 	ch := make(chan interface{}, 1000)
 	Chan = ch

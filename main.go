@@ -89,7 +89,7 @@ func main() {
 	case *hw2:
 		http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 			name := req.FormValue("name")
-			fmt.Fprintf(w, "Hello %s", name)
+			fmt.Fprintf(w, "Hello, %s", name)
 		})
 	case *methods:
 		http.Handle("/string", String("I’m a frayed knot."))

@@ -1,8 +1,6 @@
 package distro
 
 import (
-	"fmt"
-
 	"bytes"
 	"net/http"
 	"strconv"
@@ -10,8 +8,6 @@ import (
 )
 
 func init() {
-	fmt.Println("In init of fragment")
-
 	http.HandleFunc("/fs/", poster)
 	http.HandleFunc("/png/", pngHandler)
 
