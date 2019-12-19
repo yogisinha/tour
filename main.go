@@ -333,7 +333,6 @@ func mandelbrotReqParser(p string) (ColorProps, Colorizer, error) {
 		fmt.Fprintf(os.Stderr, "Fscanf: %v\n", err)
 		return ColorProps{}, mandelbrotColorizer{}, err
 	}
-	fmt.Println(x, y, origin, crange, iterations)
 
 	return ColorProps{x, y, iterations, origin, crange, 0},
 		mandelbrotColorizer{
@@ -375,7 +374,6 @@ func juliaReqParser(p string) (ColorProps, Colorizer, error) {
 		fmt.Fprintf(os.Stderr, "Fscanf: %v, parsing the input : %s\n", err, p)
 		return ColorProps{}, juliaColorizer{}, err
 	}
-	fmt.Println(x, y, origin, crange, c, iterations)
 
 	return ColorProps{x, y, iterations, origin, crange, c},
 		juliaColorizer{
