@@ -176,26 +176,35 @@ certain no of blocks. Possible values for this flag is s and d. (default is s (s
 5. -workers : No of workers in distributed mode. This is only meaningful when the -mode is "d". (default for this option is 5)
 
 ##### Below are various runs of -rpc option 
+You can use the image (gopher-619x300.jpg) provided in this repo to run the following commands
 ```sh
-tour -rpc -image=/home/yogi/Pictures/gopher-619x300.jpg
+tour -rpc -image=gopher-619x300.jpg
 ```
 Go to http://localhost:4000/ and you will see the image gets built on the browser in blocks of 50x50 and image
 blocks come in sequentially.
 
 ```sh
-tour -rpc -image=/home/yogi/Pictures/gopher-619x300.jpg -x=20 -y=20
+tour -rpc -image=/home/go/Pictures/gopher-619x300.jpg -x=20 -y=20
 ```
 Go to http://localhost:4000/ and you will see the image gets built on the browser in blocks of 20x20 and image
 blocks come in sequentially.
 
 ```sh
-tour -rpc -image=/home/yogi/Pictures/gopher-619x300.jpg -x=20 -y=20 -random
+tour -rpc -image=/home/go/Pictures/gopher-619x300.jpg -x=20 -y=20 -random
 ```
 Go to http://localhost:4000/ and you will see the image gets built on the browser in blocks of 20x20 and image
 blocks come in randomly. 
 
+Below is the screenshot of how the image blocks appear in random order and then next is of completion of image construction.
+Same effect you will see when the program runs in distributed mode.
+
+![Image blocks coming in random order](gopher_random1.png)
+
+![Image blocks coming in random order](gopher_complete.png)
+
+
 ```sh
-tour -rpc -image=/home/yogi/Pictures/gopher-619x300.jpg -x=30 -y=30 -mode=d -workers=10
+tour -rpc -image=/home/go/Pictures/gopher-619x300.jpg -x=30 -y=30 -mode=d -workers=10
 ```
 Go to http://localhost:4000/ and you will see the image gets built on the browser in blocks of 30x30 but now in this 
 case, a Master node assigns image blocks to workers in random fashion and they co-ordinate with other workers and send the image fragments
