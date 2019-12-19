@@ -201,7 +201,7 @@ Same effect you will see when the program runs in distributed mode.
 
 ![Image blocks coming in random order](gopher_random1.png)
 
-![Image blocks coming in random order](gopher_complete.png)
+![Image completely built](gopher_complete.png)
 
 
 ```sh
