@@ -34,6 +34,10 @@ $ go install
 
 It will put the "tour" binary in your %GOPATH%\bin directory
 
+You can execute below command to see all the command line flags
+```sh
+tour -help
+```
 
 ## Things to Note
 Most of the following exercises runs a server at port 4000. If you have to change that on your machine replace that 
@@ -73,7 +77,7 @@ Now go to http://localhost:4000 in your browser and you will see some art. Possi
 ```sh
 tour -helloworld2
 ```
-Now go to http://localhost:4000 with request parameter "name" and it will respond with "Hello, name" 
+Now go to http://localhost:4000 with request parameter "name" (http://localhost:4000?name=Gopher) and it will respond with "Hello, *name*" (Hello, Gopher)
 
 #### Methods
 -methods option runs the Methods exercise. Run the binary with following option:
@@ -113,6 +117,8 @@ tour -mandelbrot
 ```
 Go to http://localhost:4000 and it will generate Mandelbrot image on the browser. You can pan in the viewer
 by dragging with the mouse and zoom by using the scroll wheel or by clicking + and −
+In main.go, in method mandelbrotColor, you can experiment with different colour schemes by uncommenting code.
+This can be done as exercise to take different color schemes as command line option.
 
 #### Julia Set Viewer
 -julia option runs the Julia Set Viewer exercise. Run the binary with following option:
