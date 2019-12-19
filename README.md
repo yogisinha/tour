@@ -105,7 +105,7 @@ same as in Slices exercise.  Look at these Go blog links about how Go represents
 ```sh
 tour -pngencode
 ```
-It shows how to define youur own image type and expose it as a http end point by implementing ServeHTTP method on it.
+It shows how to define your own image type and expose it as a http end point by implementing ServeHTTP method on it.
 You can specify width and height parameter as request parameters. for e.g. Go to http://localhost:4000?x=200&y=200 and it will produce
 png image of that size. Currently, it just implments one function to produce the pixel colors. More functions as in Slices
 exercise can be implemented.
