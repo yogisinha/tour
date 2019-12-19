@@ -13,8 +13,8 @@ Only main.go and code in tour/distributed folder contains my code. main.go is th
 Code in main.go is listed in the same order as the below exercises have been mentioned, so that it is easy to follow the solutions.
 
 ## Build instructions
-Pre-requisites: You should have Go installed and GOPATH environment variable set.
-For linux
+Pre-requisites: You should have Go installed and GOPATH environment variable set. Your PATH environment variable should be set to look into GOPATH/bin folder
+#### For linux
 
 ```sh
 $ cd $GOPATH/src
@@ -23,6 +23,17 @@ $ go install
 ```
 
 It will put the "tour" binary in your $GOPATH/bin directory
+
+#### For Windows
+
+```sh
+$ cd %GOPATH%\src
+$ git clone https://github.com/yogisinha/tour.git
+$ go install
+```
+
+It will put the "tour" binary in your %GOPATH%\bin directory
+
 
 ## Things to Note
 Most of the following exercises runs a server at port 4000. If you have to change that on your machine replace that 
