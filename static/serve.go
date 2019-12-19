@@ -1,7 +1,6 @@
 package static
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"mime"
@@ -42,14 +41,7 @@ func (fsrv fileServer) ServeHTTP(conn http.ResponseWriter, req *http.Request) {
 // Serve returns an http.Handler that serves the given static file,
 // loaded from src/pkg/tour.
 func Serve(file string) http.Handler {
-	// goroot := os.Getenv("GOROOT")
-	// name := goroot + "/src/pkg/tour/" + file
-
-	goroot := os.Getenv("GOPATH")
-	name := goroot[:len(goroot)] + "\\src\\tour\\" + file
-
-	fmt.Println(name)
-	//name = "C:\\Yogesh\\development\\goworkspace\\gopl.io\\src\\tour\\pic\\pic.html"
+	name := file
 
 	if access(name) {
 		return fileServer(name)

@@ -84,7 +84,6 @@ func Serve(f func(string) map[string]int) {
 	http.HandleFunc("/wc", wcHandler)
 	fmt.Println("Running the server on 127.0.0.1:4000")
 	log.Fatal(http.ListenAndServe("127.0.0.1:4000", nil))
-	//log.Exit(err)
 }
 
 var frontPage, table *template.Template
@@ -97,12 +96,6 @@ func init() {
 		panic(err)
 	}
 
-	// table = template.New("table")
-	// table = table.Delims("«", "»")
-	// _, err = table.Parse(tableText)
-	// if err != nil {
-	// 	panic(err)
-	// }
 }
 
 var frontPageText = `<!doctype html>
@@ -157,12 +150,3 @@ function wcUpdate() {
 </body>
 </html>
 `
-
-// var tableText = `map [
-// <table>
-// «.repeated section @»
-// <tr><td width=20><td>«Word»<td>«Count»</tr>
-// «.end»
-// </table>
-// ]
-//`

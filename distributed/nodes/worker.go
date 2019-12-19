@@ -1,98 +1,57 @@
 package nodes
 
 import (
-	"tour/distro"
-	"tour/ajax"
 	"fmt"
 	"log"
 	"net"
 	"net/rpc"
-	"sync"
+	"tour/ajax"
+	"tour/distro"
 )
 
-const ServerPort = "8000"
-
 type Worker struct {
-	port string
-	sync.Mutex
-	c  int
-	id string // ID returned by Master
-	// pending image blocks to process
-	l net.Listener
+	id            string // ID returned by Master
+	l             net.Listener
+	serverAddress string
 }
 
 type ClientArgs struct {
-	ClientPort string
+	ClientAddress string
 }
 
-type RelayArgs struct {
-	ID   string
-	X, Y int
-	Pic  []byte
-	Hop []string
-}
+func StartWorkers(workers int, serverAddress string) {
 
-
-func StartWorkers(ports []string) {
-
-	for _, port := range ports {
-		//go w.startRPCServer(port)
-		go startRPCServer(port)
-	}
-
-	// time.Sleep(time.Hour)
-	// fmt.Println("startWorkers exiting ...")
-
-}
-
-func (w *Worker) register(serverPort string) {
-	var b bool
-
-	Call(serverPort, "Master.Register", &ClientArgs{w.port}, &b)
-
-	if b {
-		fmt.Println("Client registered with server ", w.port)
-	} else {
-		fmt.Println("Client Not registered with server ", w.port)
+	for i := 0; i < workers; i++ {
+		go startRPCServer(serverAddress)
 	}
 
 }
 
-func (w *Worker) getIDFromMaster(serverPort string) {
-	w.Lock()
-	defer w.Unlock()
+func (w *Worker) getIDFromMaster(serverAddress string) {
 	var s StartResult
 
-	Call(serverPort, "Master.Start", ClientArgs{w.port}, &s)
+	Call(serverAddress, "Master.Start", ClientArgs{w.l.Addr().String()}, &s)
 	w.id = s.ID
-	fmt.Println("ID returned by Master " + w.id + " for port " + w.port)
+	fmt.Println("ID returned by Master for worker ", w.l.Addr(), " : "+w.id)
 }
 
 func (w *Worker) Shutdown(_, _ *struct{}) error {
-	w.Lock()
-	defer w.Unlock()
-	fmt.Println("In Worker Shutdown method..." + w.port)
-	w.c = 1
+	fmt.Println("In Worker Shutdown method...", w.l.Addr())
 
 	w.l.Close()
 	return nil
 }
 
+// Relay method checks if the image block sent from Master was meant for itself
+// then it sends the image block to ajax.Chan (it goes to browser)
+// otherwise it asks for a random worker address from Master and forwards the image block
+// to that worker.
 func (w *Worker) Relay(args RelayArgs, _ *struct{}) error {
-	
-	// ajax.Chan <- distro.Fragment{
-	// 	X: args.X, Y: args.Y,
-	// 	URL: distro.Post(args.Pic)}
-
-	// w.Lock()
-	// defer w.Unlock()
 
 	if args.ID != w.id {
-		fmt.Printf("Client Id: %s and port: %s, Request for other Client: %s\n", w.id, w.port, args.ID)
-		
+
 		var a Address
-		Call(ServerPort, "Master.Random", struct{}{}, &a)
-		fmt.Println("Afte Master.Random call, remote address: ", a.Addr, w.port)
+		Call(w.serverAddress, "Master.Random", struct{}{}, &a)
 
 		hops := append(args.Hop, a.Addr)
 		args.Hop = hops
@@ -100,7 +59,6 @@ func (w *Worker) Relay(args RelayArgs, _ *struct{}) error {
 
 	} else {
 
-		fmt.Printf("Client Id: %s and port: %s, Request for same Client: %s, total Hops:%v \n", w.id, w.port, args.ID, args.Hop)
 		ajax.Chan <- distro.Fragment{
 			X: args.X, Y: args.Y,
 			URL: distro.MyPost(args.Pic)}
@@ -109,52 +67,32 @@ func (w *Worker) Relay(args RelayArgs, _ *struct{}) error {
 	return nil
 }
 
-func startRPCServer(port string) {
+func startRPCServer(serverAddress string) {
 	w := new(Worker)
-	w.port = port
+	w.serverAddress = serverAddress
 	rpcs := rpc.NewServer()
 	rpcs.Register(w)
 
-	//rpc.HandleHTTP()
-
-	//w.register(ServerPort) // register with server. sending its own port so that server can call back RPCs on workers
-
-	fmt.Println("net Listen on port " + w.port)
-	l, e := net.Listen("tcp", ":"+w.port)
+	l, e := net.Listen("tcp", "127.0.0.1:")
 	if e != nil {
 		log.Fatal("listen error in Worker node :", e)
 	}
 	w.l = l
-	w.getIDFromMaster(ServerPort)
+
+	fmt.Println("Worker: chosen port ", w.l.Addr())
+	w.getIDFromMaster(serverAddress)
 
 	for {
-		// select {
-		// case <-Ch:
-		// 	break loop
-		// default:
-		// }
 
-		fmt.Println("Before Accept in Worker..." + w.port)
 		conn, err := l.Accept()
 		if err != nil {
-			log.Printf("Worker: Error in Accept: %v", err)
+			log.Printf("Worker: Error in Accept: %v\n", err)
 			break
-		} else {
-			// w.Lock()
-			// fmt.Printf("After Accept %d\n", w.c)
-			// w.c = 100
-			// fmt.Printf("After Accept assigning %d\n", w.c)
-
-			// w.Unlock()
 		}
 
-		//fmt.Println("Before serving the connection...")
 		go rpcs.ServeConn(conn)
 	}
 
-	fmt.Println("Exiting the serving loop for worker..." + port)
-
-	// fmt.Println("Starting the RPC server on Worker...", l.Addr())
-	// log.Fatal(http.Serve(l, nil))
+	fmt.Printf("Worker with address %s Stopped.\n", w.l.Addr())
 
 }

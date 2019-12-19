@@ -1,18 +1,15 @@
 package main
 
 import (
-	"tour/fractal"
-	"tour/wc"
-	"flag"
-	"strconv"
-	"tour/pic"
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
+	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"log"
@@ -22,37 +19,51 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"tour/ajax"
+	"tour/chat"
 	"tour/distributed/nodes"
 	"tour/distro"
+	"tour/fractal"
+	"tour/pic"
 	"tour/tree"
+	"tour/wc"
 )
 
 var pixelFuns = map[string]func(x, y uint8) uint8{
-	"X+Y": func(x, y uint8) uint8 { return x + y },
-	"X*Y": func(x, y uint8) uint8 { return x * y },
-	"(X+Y)/2": func(x, y uint8) uint8 { return (x + y)/2 },
-	"X^Y": func(x, y uint8) uint8 { return x ^ y }, 
- }
+	"X+Y":     func(x, y uint8) uint8 { return x + y },
+	"X*Y":     func(x, y uint8) uint8 { return x * y },
+	"(X+Y)/2": func(x, y uint8) uint8 { return (x + y) / 2 },
+	"X^Y":     func(x, y uint8) uint8 { return x ^ y },
+}
 
 func main() {
 	var sqrt = flag.Float64("sqrt", 1.0, "input for sqrt function exercise")
 	var wcf = flag.Bool("wcf", false, "flag to run WordCount exercise")
 	var slices = flag.String("slices", "", "flag to input function def to run Slices exercise. Enclose the value in double quotes. for e.g. tour -slices=\"X^Y\"")
 	var hw2 = flag.Bool("helloworld2", false, "flag to run Hello World 2 exercise")
-	var methods = flag.Bool("methods", false, "flag to run Methods exercise")	
+	var methods = flag.Bool("methods", false, "flag to run Methods exercise")
 	var imgver = flag.String("imgvwer", "", "flag to input function def to run Image Viewer exercise. Enclose the value in double quotes. for e.g. tour -imgvwer=\"X^Y\"")
-	var pngencode = flag.Bool("pngencode", false, "flag to run PNG Encoding exercise")	
-	var mandelbrot = flag.Bool("mandelbrot", false, "flag to run Mandelbrot Set Viewer exercise")	
-
-	
+	var pngencode = flag.Bool("pngencode", false, "flag to run PNG Encoding exercise")
+	var mandelbrot = flag.Bool("mandelbrot", false, "flag to run Mandelbrot Set Viewer exercise")
+	var julia = flag.Bool("julia", false, "flag to run Julia Set Viewer exercise")
+	var webLog = flag.Bool("weblog", false, "flag to run Web Logging exercise")
+	var chatex = flag.Bool("chatex", false, "flag to run All the Chat related exercises")
+	var rpc = flag.Bool("rpc", false, "flag to run RPC related exercises")
+	var image = flag.String("image", "", "flag to input image path")
+	var x = flag.Int("x", 50, "flag to input width of each block of image")
+	var y = flag.Int("y", 50, "flag to input height of each block of image")
+	var rand = flag.Bool("random", false, "flag to build the image in random order. All the blocks will appear in random order")
+	var mode = flag.String("mode", "s", "possible mode flags to run the file download exercise. for sequential: s, for distributed: d")
+	var workers = flag.Int("workers", 5, "No of workers")
 
 	fmt.Println(os.Args)
 
-	flag.Parse()	
+	flag.Parse()
 
 	switch {
 	case *sqrt > 1.0:
@@ -62,79 +73,83 @@ func main() {
 		fmt.Println("Running WordCount", *slices)
 		wc.Serve(WordCount)
 	case *slices != "":
-		fmt.Println("Running Slices", *slices)		
+		fmt.Println("Running Slices", *slices)
 		if pixelFunc, ok := pixelFuns[*slices]; ok {
 			pic.Serve(picFunUint(pixelFunc))
 		} else {
 			log.Fatal("Unknown function provided.")
-		}		
+		}
 	case *imgver != "":
-		fmt.Println("Running Image Viewer", *imgver)		
+		fmt.Println("Running Image Viewer", *imgver)
 		if pixelFunc, ok := pixelFuns[*imgver]; ok {
 			pic.ServeImage(picFunImage(pixelFunc))
 		} else {
 			log.Fatal("Unknown function provided.")
-		}		
+		}
 	case *hw2:
-		http.HandleFunc("/",  func (w http.ResponseWriter, req *http.Request) {
+		http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 			name := req.FormValue("name")
 			fmt.Fprintf(w, "Hello %s", name)
-		} )
-
-		http.Handle("/string", String("I’m a frayed knot."))
-		http.Handle("/struct", &Struct{"Hello", ":", "USENIX!"})
-
-		log.Fatal(http.ListenAndServe(":4000", nil))
+		})
 	case *methods:
 		http.Handle("/string", String("I’m a frayed knot."))
 		http.Handle("/struct", &Struct{"Hello", ":", "USENIX!"})
-
-		log.Fatal(http.ListenAndServe(":4000", nil))
 	case *pngencode:
 		http.Handle("/", Image1{})
-		log.Fatal(http.ListenAndServe(":4000", nil))
 	case *mandelbrot:
-		http.Handle("/", fractal.MainPage)
+		http.Handle("/", fractal.MainPage) // Different color schemes...
 		http.Handle("/mandelbrot",
 			MyImage{
 				requestParserFunc: mandelbrotReqParser,
 			})
-		log.Fatal(http.ListenAndServe(":4000", nil))
+	case *julia:
+		http.Handle("/", fractal.MainPage) // Different color schemes...  Go to http://localhost:4000/juliaviewer
+		http.Handle("/julia",
+			MyImage{
+				requestParserFunc: juliaReqParser,
+			})
+	case *webLog:
+		http.Handle("/", ajax.LogPage)
+		go webLogging()
+	case *chatex:
+		http.Handle("/", chat.ChatPage)
+		http.HandleFunc("/join", joinHandler)
+		http.HandleFunc("/say", sayHandler)
+		http.HandleFunc("/exit", exitHandler)
+		http.Handle("/julia",
+			MyImage{
+				requestParserFunc: juliaReqParser,
+			}) // for the julia bot.  Will respond with a julia image for messages like julia: 0.285+0.01i
 
+		startChat() // goroutines started by this method does not stop once the program is stopped. Might be an exercise
+	case *rpc:
+		imagePath := *image
+		f, err := os.Open(imagePath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error in opening file %s: %v\n", imagePath, err)
+			return
+		}
+		f.Close()
 
-	
-
-
-
-
-
-
-	default:
+		http.Handle("/", distro.MainPage)
+		if *mode == "s" {
+			http.HandleFunc("/start",
+				func(c http.ResponseWriter, req *http.Request) {
+					sendFilefragments(imagePath, *x, *y, *rand)
+				})
+		} else if *mode == "d" {
+			http.HandleFunc("/start",
+				func(c http.ResponseWriter, req *http.Request) {
+					startMasterAndWorkerNodes(imagePath, *workers, *x, *y)
+				})
+		}
 
 	}
 
-
-
-	// 
-
-	//fmt.Println(Sqrt(68))
-
-	//fmt.Println(Same(tree.New(1), tree.New(2)))
-
-	//go webLogging()
-
-	// filePath := string(`C:\development\workspace\Fleeetnet_main\WebContent\images\add.png`)
-	// sendFilefragments(filePath)
-
-	// r1 := image.Rect(0, 0, 10, 5)
-	// r2 := image.Rect(0, 0, 5, 10)
-
-	//fmt.Println(r1.Intersect(r2))
-
-	//testSplits()
-
-	//startChat()
-	//startServer()
+	if *hw2 || *methods || *pngencode || *mandelbrot || *julia || *webLog || *chatex || *rpc {
+		fmt.Println("Server running at 127.0.0.1:4000...")
+		log.Fatal(http.ListenAndServe(":4000", nil))
+	}
 
 }
 
@@ -144,7 +159,7 @@ func Sqrt(x float64) float64 {
 	var old = z - (z*z-x)/2*z
 	var new float64
 	for {
-		new = old - (old*old-x)/(2*old)		
+		new = old - (old*old-x)/(2*old)
 		if math.Abs(new-old) < threshold {
 			return new
 		}
@@ -173,22 +188,22 @@ func picFunUint(pixelFunc func(x, y uint8) uint8) func(x, y int) [][]uint8 {
 
 	return func(dx, dy int) [][]uint8 {
 		var grid = make([][]uint8, dx)
-	
-		for i:=0; i<dx; i++ {
+
+		for i := 0; i < dx; i++ {
 			var y = make([]uint8, dy)
-			for j:=0; j<dy; j++ {
+			for j := 0; j < dy; j++ {
 				y[j] = pixelFunc(uint8(i), uint8(j))
 			}
 			grid[i] = y
 		}
-	
+
 		return grid
 	}
 
 }
 
 type Image1 struct {
-	x, y int
+	x, y        int
 	pixelColors [][]color.Color
 }
 
@@ -206,35 +221,34 @@ func (i Image1) At(x, y int) color.Color {
 
 func picFunImage(pixelFunc func(x, y uint8) uint8) func(x, y int) image.Image {
 
-	return func(dx, dy int) image.Image {		
-	
-		img := Image1{x:dx, y:dy}
+	return func(dx, dy int) image.Image {
+
+		img := Image1{x: dx, y: dy}
 		img.pixelColors = make([][]color.Color, dx)
-	
-		for i:=0; i<dx; i++ {
+
+		for i := 0; i < dx; i++ {
 			var y = make([]color.Color, dy)
-			for j:=0; j<dy; j++ {
+			for j := 0; j < dy; j++ {
 				v := pixelFunc(uint8(i), uint8(j))
 				y[j] = color.RGBA{v, v, v, 255}
 			}
 			img.pixelColors[i] = y
 		}
-	
+
 		return img
 	}
 
 }
 
+func PicImage(dx, dy int) image.Image {
 
-func PicImage(dx, dy int) image.Image {	
-
-	img := Image1{x:dx, y:dy}
+	img := Image1{x: dx, y: dy}
 	img.pixelColors = make([][]color.Color, dx)
 
-	for i:=0; i<dx; i++ {
+	for i := 0; i < dx; i++ {
 		var y = make([]color.Color, dy)
-		for j:=0; j<dy; j++ {
-			v := (uint8(i)*uint8(j))
+		for j := 0; j < dy; j++ {
+			v := (uint8(i) * uint8(j))
 			y[j] = color.RGBA{v, v, v, 255}
 		}
 		img.pixelColors[i] = y
@@ -274,123 +288,18 @@ func (s *Struct) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	w.Write(b)
 }
 
-
-func testSplits() {
-	X, Y := 247, 165
-	m, n := 5, 5
-
-	var xsteps, ysteps int
-	if X%m == 0 {
-		xsteps = X / m
-	} else {
-		xsteps = X/m + 1
-	}
-
-	if Y%n == 0 {
-		ysteps = Y / n
-	} else {
-		ysteps = Y/n + 1
-	}
-
-	if m >= X {
-		xsteps = 1
-	}
-	if n >= Y {
-		ysteps = 1
-	}
-
-	var x0, y0, i int
-	i = 1
-	for y := 0; y < ysteps; y++ {
-
-		for x := 0; x < xsteps; x++ {
-			frstRect := image.Rect(x0, y0, x0+m, y0+n)
-			secondRect := image.Rect(x0, y0,
-				int(math.Min(float64(x0+m), float64(X))),
-				int(math.Min(float64(y0+n), float64(Y))))
-
-			fmt.Printf("%d. %v\n", i, frstRect.Intersect(secondRect))
-
-			x0 += m
-			i++
-		}
-
-		x0 = 0
-		y0 += n
-
-	}
-
-}
-
-func Same(t1, t2 *tree.Tree) bool {
-	var ch1 = make(chan int)
-	var ch2 = make(chan int)
-
-	startWalk(t1, ch1)
-	startWalk(t2, ch2)
-
-	for {
-		v1, ok1 := <-ch1
-		v2, ok2 := <-ch2
-
-		if ok1 && ok2 {
-			if v1 == v2 {
-				continue
-			} else {
-				drainChannel(ch1)
-				drainChannel(ch2)
-				return false
-			}
-		} else if ok1 && !ok2 {
-			drainChannel(ch1)
-			return false
-		} else if !ok1 && ok2 {
-			drainChannel(ch2)
-			return false
-		} else {
-			return true
-		}
-
-	}
-
-}
-
-func drainChannel(ch <-chan int) {
-	for range ch {
-	}
-}
-
-func startWalk(t *tree.Tree, ch chan<- int) {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go Walk(t, ch, &wg)
-
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-}
-
-func Walk(t *tree.Tree, ch chan<- int, wg *sync.WaitGroup) {
-	defer wg.Done()
-	if t == nil {
-		return
-	}
-
-	wg.Add(1)
-	Walk(t.Left, ch, wg)
-	ch <- t.Value
-
-	wg.Add(1)
-	Walk(t.Right, ch, wg)
-}
-
-
-
-
+// Structs and methods for Mandelbrot and Julia Set viewer exercise -- Start
 
 type Colorizer interface {
 	At(x, y int) color.Color
+}
+
+type mandelbrotColorizer struct {
+	props ColorProps
+}
+
+type juliaColorizer struct {
+	props ColorProps
 }
 
 type MyImage struct {
@@ -410,14 +319,6 @@ func (m MyImage) ColorModel() color.Model {
 
 func (m MyImage) Bounds() image.Rectangle {
 	return image.Rect(0, 0, m.colorProps.width, m.colorProps.height)
-}
-
-type mandelbrotColorizer struct {
-	props ColorProps
-}
-
-type juliaColorizer struct {
-	props ColorProps
 }
 
 func mandelbrotReqParser(p string) (ColorProps, Colorizer, error) {
@@ -453,26 +354,13 @@ func mandelbrotColor(c complex128, iterations int) color.Color {
 	for i := 0; i < iterations; i++ {
 		z = z*z + c
 		if cmplx.Abs(z) > 2 {
-			//return fractal.Ramp(i, iterations)
 			return color.Gray{255 - uint8(contrast*i)}
+			//return fractal.Cycle(i, iterations)
+			//return fractal.Ramp(i, iterations)
 		}
 	}
 
 	return color.Black
-}
-
-func (m MyImage) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-
-	colorProps, colorizer, _ := m.requestParserFunc(req.FormValue("p"))
-	fmt.Println("in ServeHTTP", colorizer)
-	m.colorProps = colorProps
-	m.Colorizer = colorizer
-
-	var buf bytes.Buffer
-	png.Encode(&buf, m)
-
-	w.Header().Set("Content-Type", "image/png")
-	w.Write(buf.Bytes())
 }
 
 func juliaReqParser(p string) (ColorProps, Colorizer, error) {
@@ -507,15 +395,124 @@ func juliaColor(z, c complex128, iterations int) color.Color {
 	for i := 0; i < iterations; i++ {
 		z = z*z + c
 		if cmplx.Abs(z) > 2 {
-			return color.Gray{255 - uint8(contrast*i)}
+			//return color.Gray{255 - uint8(contrast*i)}
+			//return fractal.Cycle(i, iterations)
+			return fractal.Ramp(i, iterations)
 		}
 	}
 	return color.Black
 }
 
+func (m MyImage) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
+	colorProps, colorizer, _ := m.requestParserFunc(req.FormValue("p"))
+	fmt.Println("in ServeHTTP", colorizer)
+	m.colorProps = colorProps
+	m.Colorizer = colorizer
 
+	var buf bytes.Buffer
+	png.Encode(&buf, m)
 
+	w.Header().Set("Content-Type", "image/png")
+	w.Write(buf.Bytes())
+}
+
+// Structs and methods for Mandelbrot and Julia Set viewer exercise -- End
+
+// Same checks whether 2 Binary search Trees are equivalent or not.
+// Exercise using goroutines and channels
+func Same(t1, t2 *tree.Tree) bool {
+	var ch1 = make(chan int)
+	var ch2 = make(chan int)
+
+	startWalk(t1, ch1)
+	startWalk(t2, ch2)
+
+	for {
+		v1, ok1 := <-ch1
+		v2, ok2 := <-ch2
+
+		if ok1 && ok2 {
+			if v1 == v2 {
+				continue
+			} else {
+				drainChannel(ch1)
+				drainChannel(ch2)
+				return false
+			}
+		} else if ok1 && !ok2 {
+			drainChannel(ch1)
+			return false
+		} else if !ok1 && ok2 {
+			drainChannel(ch2)
+			return false
+		} else {
+			return true
+		}
+
+	}
+
+}
+
+// draining the channels to avoid the goroutine leak.
+func drainChannel(ch <-chan int) {
+	for range ch {
+	}
+}
+
+func startWalk(t *tree.Tree, ch chan<- int) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go Walk(t, ch, &wg)
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+}
+
+func Walk(t *tree.Tree, ch chan<- int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	if t == nil {
+		return
+	}
+
+	wg.Add(1)
+	Walk(t.Left, ch, wg)
+	ch <- t.Value
+
+	wg.Add(1)
+	Walk(t.Right, ch, wg)
+}
+
+type Log string
+
+func webLogging() {
+	t := time.NewTicker(time.Second)
+	abort := make(chan struct{})
+	go func() {
+		os.Stdin.Read(make([]byte, 1))
+		t.Stop()
+		abort <- struct{}{}
+	}()
+
+	var i int
+loop:
+	for {
+		select {
+		case <-t.C:
+			ajax.Chan <- Log(fmt.Sprintf("%d", i))
+			i++
+		case <-abort:
+			fmt.Println("In default...")
+			break loop
+		}
+	}
+
+	fmt.Println("End")
+}
+
+// Structs, channel definitions and methods for Chat related exercises. -- Start
 
 var chatRoom = make(chan interface{})
 var juliaChan = make(chan Say)
@@ -626,199 +623,66 @@ func exitHandler(c http.ResponseWriter, req *http.Request) {
 	chatRoom <- Exit{req.FormValue("id")}
 }
 
-func getBlocks(X, Y int, m, n int) []image.Rectangle {
-	var xsteps, ysteps int
-	if X%m == 0 {
-		xsteps = X / m
-	} else {
-		xsteps = X/m + 1
-	}
+// Structs, channel definitions and methods for Chat related exercises. -- End
 
-	if Y%n == 0 {
-		ysteps = Y / n
-	} else {
-		ysteps = Y/n + 1
-	}
-
-	if m >= X {
-		xsteps = 1
-	}
-	if n >= Y {
-		ysteps = 1
-	}
-
-	var x0, y0 int
-	var blocks []image.Rectangle
-	for y := 0; y < ysteps; y++ {
-		for x := 0; x < xsteps; x++ {
-			frstRect := image.Rect(x0, y0, x0+m, y0+n)
-			secondRect := image.Rect(x0, y0,
-				int(math.Min(float64(x0+m), float64(X))),
-				int(math.Min(float64(y0+n), float64(Y))))
-
-			blocks = append(blocks, frstRect.Intersect(secondRect))
-			x0 += m
-		}
-
-		x0 = 0
-		y0 += n
-	}
-
-	rand.Shuffle(len(blocks), func(i, j int) {
-		blocks[i], blocks[j] = blocks[j], blocks[i]
-	})
-
-	return blocks
-
-}
-
-func sendFilefragments(filePath string) {
+func sendFilefragments(imagePath string, m, n int, random bool) {
 	// open the file
 	// make the RGBA
 	// get the pix data
 	// make the Fragment and send to ajax.Chan
-	f, err := os.Open(filePath)
+	f, err := os.Open(imagePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error in opening file %s: %v\n", filePath, err)
+		fmt.Fprintf(os.Stderr, "Error in opening file %s: %v\n", imagePath, err)
 		return
 	}
 	defer f.Close()
 
-	img, err := jpeg.Decode(f)
+	ext := path.Ext(imagePath)
+	var img image.Image
+	switch strings.ToLower(ext) {
+	case ".jpeg", ".jpg":
+		img, err = jpeg.Decode(f)
+	case ".png":
+		img, err = png.Decode(f)
+	case ".gif":
+		img, err = gif.Decode(f)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error in converting to image: %v\n", err)
 		return
 	}
 
 	b := img.Bounds()
-	new_m := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-	draw.Draw(new_m, new_m.Bounds(), img, b.Min, draw.Src)
-	X, Y := 247, 165
-	m, n := 10, 10
+	newImg := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(newImg, newImg.Bounds(), img, b.Min, draw.Src)
+	X, Y := b.Dx(), b.Dy()
 
-	for _, block := range getBlocks(X, Y, m, n) {
-		m1 := new_m.SubImage(block)
+	blocks := nodes.GetBlocks(X, Y, m, n)
+	if random {
+		rand.Shuffle(len(blocks), func(i, j int) {
+			blocks[i], blocks[j] = blocks[j], blocks[i]
+		})
+	}
+
+	for _, block := range blocks {
+		m1 := newImg.SubImage(block)
 		var buf bytes.Buffer
-		jpeg.Encode(&buf, m1, nil)
+		png.Encode(&buf, m1)
 		ajax.Chan <- distro.Fragment{X: block.Min.X, Y: block.Min.Y, URL: distro.Post(buf.Bytes())}
 	}
 
-	fmt.Println("End of sendFilefragments...")
 }
 
-// func sequentialFileDownloadHandler(c http.ResponseWriter, req *http.Request) {
-// 	//filePath := string(`C:\development\workspace\Fleeetnet_main\WebContent\images\add.png`)
-// 	filePath := string(`C:\Users\600131444\Pictures\vehicleImage.jpg`)
-// 	go sendFilefragments(filePath) // to Client
-// }
+func startMasterAndWorkerNodes(imagePath string, workers, m, n int) {
 
-func sequentialFileDownloadHandler(c http.ResponseWriter, req *http.Request) {
-	nodes.StartServer()
+	mr := nodes.StartMaster(imagePath, m, n)
 
-	ports := []string{"5000", "5001", "5002", "5003", "5004", "5005"}
-	nodes.StartWorkers(ports)
+	nodes.StartWorkers(workers, mr.ServerAddress)
 
-	// go func() {
-	// 	var res nodes.StartResult
-	// 	nodes.Call(nodes.ServerPort, "Master.Start", nodes.StartArgs{true}, &res)
-	// 	fmt.Println("Result ", res.ID)
+	mr.Wait()
 
-	// }()
+	mr.StopWorkers()
+	mr.StopMaster()
 
 }
-
-func distributedFileDownloadHandler(c http.ResponseWriter, req *http.Request) {
-	ports := []string{"5000", "5001", "5002", "5003", "5004", "5005"}
-	nodes.StartWorkers(ports)
-	time.Sleep(time.Second)
-
-	// go func() {
-	// 	var res nodes.StartResult
-	// 	nodes.Call(nodes.ServerPort, "Master.Start", nodes.StartArgs{true}, &res)
-	// 	fmt.Println("Result ", res.ID)
-
-	// }()
-
-}
-
-type Log string
-
-func webLogging() {
-	t := time.NewTicker(time.Second)
-	abort := make(chan struct{})
-	go func() {
-		os.Stdin.Read(make([]byte, 1))
-		t.Stop()
-		abort <- struct{}{}
-	}()
-
-	var i int
-loop:
-	for {
-		select {
-		case <-t.C:
-			ajax.Chan <- Log(fmt.Sprintf("%d", i))
-			i++
-		case <-abort:
-			fmt.Println("In default...")
-			break loop
-		}
-	}
-
-	fmt.Println("End")
-}
-
-//var ChatPage = static.Serve("chat/chat.html")
-
-func startServer() {
-	fmt.Println("in startServer... before registering /")
-	//http.Handle("/", fractal.MainPage)
-	//http.Handle("/", ajax.LogPage)
-	//http.Handle("/", chat.ChatPage)
-	http.Handle("/", distro.MainPage)
-
-	http.Handle("/string", String("Hello World String"))
-	http.Handle("/struct", &Struct{"Hello", ":", "Go Course..."})
-
-	http.Handle("/mandelbrot",
-		MyImage{
-			requestParserFunc: mandelbrotReqParser,
-		})
-	http.Handle("/julia",
-		MyImage{
-			requestParserFunc: juliaReqParser,
-		})
-
-	http.HandleFunc("/join", joinHandler)
-	http.HandleFunc("/say", sayHandler)
-	http.HandleFunc("/exit", exitHandler)
-
-	// m := nodes.StartServer()
-	// time.Sleep(time.Second)
-	//ports := []string{"5000", "5001"}
-
-	// m.KillWorkers()
-	// time.Sleep(time.Second)
-	// m.StopMaster()
-
-	// nodes.Ch = make(chan struct{})
-	// go func() {
-	// 	os.Stdin.Read(make([]byte, 1))
-	// 	close(nodes.Ch)
-	// }()
-
-	http.HandleFunc("/start", sequentialFileDownloadHandler)
-
-	log.Fatal(http.ListenAndServe(":4000", nil))
-}
-
-type Master struct {
-}
-
-type Node struct {
-}
-
-
-
-
-

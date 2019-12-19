@@ -2,7 +2,7 @@ package distro
 
 import (
 	"fmt"
-	
+
 	"bytes"
 	"net/http"
 	"strconv"
@@ -11,16 +11,15 @@ import (
 
 func init() {
 	fmt.Println("In init of fragment")
-	
+
 	http.HandleFunc("/fs/", poster)
-	fmt.Println("Before registering pngHandler...")
 	http.HandleFunc("/png/", pngHandler)
-	fmt.Println("After registering pngHandler...")
+
 }
 
 var fsLock sync.Mutex
 var fsMap = make(map[string][]byte)
-var ch = make(chan []byte)	
+var ch = make(chan []byte)
 
 func poster(conn http.ResponseWriter, req *http.Request) {
 	name := req.URL.Path[4:]
@@ -31,12 +30,12 @@ func poster(conn http.ResponseWriter, req *http.Request) {
 		conn.WriteHeader(404)
 		return
 	}
-	//conn.Header().Set("Content-Type", "image/png")
-	conn.Header().Set("Content-Type", "image/jpeg")
+	conn.Header().Set("Content-Type", "image/png")
+	//conn.Header().Set("Content-Type", "image/jpeg")
 	conn.Write(data)
 }
 
-func pngHandler(conn http.ResponseWriter, req *http.Request) {	
+func pngHandler(conn http.ResponseWriter, req *http.Request) {
 	//conn.Header().Set("Content-Type", "image/png")
 	//fmt.Println("In pngHandler...")
 	//time.Sleep(1*time.Second)
@@ -48,14 +47,16 @@ func pngHandler(conn http.ResponseWriter, req *http.Request) {
 // The data is assumed to be a PNG image.
 func Post(data []byte) string {
 	fsLock.Lock()
-	n := strconv.Itoa(len(fsMap)) + ".jpeg"
+	//n := strconv.Itoa(len(fsMap)) + ".jpeg"
+	n := strconv.Itoa(len(fsMap)) + ".png"
 	fsMap[n] = bytes.NewBuffer(data).Bytes()
 	fsLock.Unlock()
 	return "/fs/" + n
 }
 
 var c int
-func MyPost(data []byte) string {	
+
+func MyPost(data []byte) string {
 	fsLock.Lock()
 	c++
 	fsLock.Unlock()
