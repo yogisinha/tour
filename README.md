@@ -19,6 +19,7 @@ Pre-requisites: You should have Go installed and GOPATH environment variable set
 ```sh
 $ cd $GOPATH/src
 $ git clone https://github.com/yogisinha/tour.git
+$ cd tour
 $ go install
 ```
 
@@ -29,6 +30,7 @@ It will put the "tour" binary in your $GOPATH/bin directory
 ```sh
 $ cd %GOPATH%\src
 $ git clone https://github.com/yogisinha/tour.git
+$ cd tour
 $ go install
 ```
 
