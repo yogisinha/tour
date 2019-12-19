@@ -406,7 +406,6 @@ func juliaColor(z, c complex128, iterations int) color.Color {
 func (m MyImage) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 	colorProps, colorizer, _ := m.requestParserFunc(req.FormValue("p"))
-	fmt.Println("in ServeHTTP", colorizer)
 	m.colorProps = colorProps
 	m.Colorizer = colorizer
 
