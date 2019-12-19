@@ -1,7 +1,7 @@
 # golang tour
 Go files and solutions to Russ Cox 2010 course. Good course to learn various aspects of Go.
 
-I have include the course pdf (go-course.pdf) in this repo. In this pdf you can find the link for the support code for these exercises, but this course is from 2010 and some code did not compile with recent Go version. Like http handler function definition took pointer to http.Conn object instead of http.ResponseWriter.
+I have include the course pdf (go-course.pdf) in this repo. In this pdf you can find the link for the support code for these exercises, but this course is from 2010 and some code did not compile with recent Go version. Like http handler function definition took **\*http.Conn** object instead of **http.ResponseWriter** as first argument.
 I changed those code and included in this repo. So its best to work with code included in this repo. 
 These exercises were fun and lot of learning. You should try to implement these first by yourself. 
 Please send your feedback if anything can be improved.
@@ -118,8 +118,7 @@ exercise can be implemented.
 tour -mandelbrot
 ```
 Go to http://localhost:4000 and it will generate Mandelbrot image on the browser. You can pan in the viewer
-by dragging with the mouse and zoom by using the scroll wheel or by clicking + and −
-In main.go, in method mandelbrotColor, you can experiment with different colour schemes by uncommenting code.
+by dragging with the mouse and zoom by using the scroll wheel or by clicking + and −. In main.go, in method mandelbrotColor, you can experiment with different colour schemes by uncommenting code.
 This can be done as exercise to take different color schemes as command line option.
 
 #### Julia Set Viewer
@@ -154,7 +153,7 @@ Open two or more browser windows on http://localhost:4000 and you can
 2. When a user joins (or exits), a message will be displayed with a list of all the users, formatted like:
 [+newUser, oldUser1, oldUser2]
 [−userWhoLeft, remainingUser1, remainingUser2]
-3. For the julia bot - This feature respond with a julia image for messages like julia: 0.285+0.01i
+3. For the julia bot - This feature respond with a julia image for messages like *julia: 0.285+0.01i*
 
 ### Networking with RPCs
 
