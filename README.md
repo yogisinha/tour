@@ -14,7 +14,7 @@ Code in main.go is listed in the same order as the below exercises have been men
 
 ## Build instructions
 ### For Go version >= 1.11
-As in Go version 1.11 and later Go modules are supported you can build this without GOPATH variable set. Anyway, this project does not have any external dependencies other than from standard Go libraries. Do the following from anywhere in your machine:
+As in Go version 1.11 and later, Go modules are supported, you can build this without GOPATH variable set. Anyway, this project does not have any external dependencies other than from standard Go libraries. Do the following from anywhere in your machine:
 
 ```sh
 $ git clone https://github.com/yogisinha/tour.git
