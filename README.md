@@ -1,4 +1,4 @@
-# golang tour
+# Golang tour
 Go files and solutions to Russ Cox 2010 course. Good course to learn various aspects of Go.
 
 I have included the course pdf (go-course.pdf) in this repo. In this pdf you can find the link for the support code for these exercises, but this course is from 2010 and some code did not compile with recent Go version. Like http handler function definition took **\*http.Conn** object instead of **http.ResponseWriter** as first argument.
@@ -13,7 +13,19 @@ Only main.go and code in tour/distributed folder contains my code. main.go is th
 Code in main.go is listed in the same order as the below exercises have been mentioned, so that it is easy to follow the solutions.
 
 ## Build instructions
-Pre-requisites: You should have Go installed and GOPATH environment variable set. Your PATH environment variable should be set to look into GOPATH/bin folder
+### For Go version >= 1.11
+As in Go version 1.11 and later Go modules are supported you can build this without GOPATH variable set. Anyway, this project does not have any external dependencies other than from standard Go libraries. Do the following from anywhere in your machine:
+
+```sh
+$ git clone https://github.com/yogisinha/tour.git
+$ cd tour
+$ go build
+```
+
+It will put the "tour" binary inside "tour" folder and you can run all the exercises. 
+
+### For Go version < 1.11
+Pre-requisites: Your PATH environment variable should be set to look into GOPATH/bin folder
 #### For linux
 
 ```sh
